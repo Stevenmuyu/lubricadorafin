@@ -57,7 +57,6 @@ const Modelos = {
     Usuario: {
         async crear(datos) {
             const { nombre, email, password, rol, telefono, empresa } = datos;
-            // Se inserta la contraseña directamente como texto plano
             const res = await pool.query(
                 `INSERT INTO usuarios (nombre, email, password, rol, telefono, empresa) 
                  VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, nombre, email, rol, telefono, empresa`,
@@ -75,14 +74,37 @@ const Modelos = {
             let query = 'SELECT * FROM productos WHERE activo = true';
             const valores = [];
             let contador = 1;
+
             if (filtros.tipo) { query += ` AND tipo = $${contador}`; valores.push(filtros.tipo); contador++; }
-            if (filtros.marca) { query += ` AND marca ILIKE $${contador}`; valores.push(`%${filtros.marca}%`); contador++; }
+            
+            // --- AGREGADO: FILTROS EXACTOS PARA REACT ---
+            if (filtros.marca) { query += ` AND marca = $${contador}`; valores.push(filtros.marca); contador++; }
             if (filtros.viscosidad) { query += ` AND viscosidad = $${contador}`; valores.push(filtros.viscosidad); contador++; }
-            if (filtros.busqueda) { query += ` AND (nombre ILIKE $${contador} OR descripcion ILIKE $${contador})`; valores.push(`%${filtros.busqueda}%`); contador++; }
+            if (filtros.tipo_aceite) { query += ` AND tipo_aceite = $${contador}`; valores.push(filtros.tipo_aceite); contador++; }
+            // --------------------------------------------
+
+            if (filtros.busqueda) { 
+                query += ` AND (nombre ILIKE $${contador} OR descripcion ILIKE $${contador})`; 
+                valores.push(`%${filtros.busqueda}%`); 
+                contador++; 
+            }
+
             query += ' ORDER BY creado_en DESC';
             const res = await pool.query(query, valores);
             return res.rows;
         },
+        // --- AGREGADO: FUNCIÓN PARA OBTENER LAS LISTAS DE LOS FILTROS ---
+        async obtenerOpcionesFiltros() {
+            const marcas = await pool.query('SELECT DISTINCT marca FROM productos WHERE activo = true AND marca IS NOT NULL ORDER BY marca');
+            const viscosidades = await pool.query('SELECT DISTINCT viscosidad FROM productos WHERE activo = true AND viscosidad IS NOT NULL ORDER BY viscosidad');
+            return {
+                marcas: marcas.rows.map(r => r.marca),
+                viscosidades: viscosidades.rows.map(r => r.viscosidad),
+                tipos: ['aceite', 'filtro', 'aditivo'],
+                tipos_aceite: ['sintetico', 'mineral', 'semi-sintetico']
+            };
+        },
+        // ---------------------------------------------------------------
         async descontarStock(client, id, cantidad) {
             const prod = await client.query('SELECT stock FROM productos WHERE id = $1', [id]);
             if (prod.rows.length === 0 || prod.rows[0].stock < cantidad) throw new Error(`Stock insuficiente para el ID ${id}`);
@@ -150,7 +172,6 @@ app.post('/api/usuarios/login', async (req, res) => {
         const { email, password } = req.body;
         const usuario = await Modelos.Usuario.obtenerPorEmail(email);
         
-        // Comparación simple de cadenas de texto
         if (usuario && usuario.password === password) {
             const { password: _, ...datos } = usuario;
             const token = jwt.sign(datos, JWT_SECRET, { expiresIn: '24h' });
@@ -172,6 +193,15 @@ app.get('/api/productos', async (req, res) => {
         res.json({ productos }); 
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
+// --- AGREGADO: RUTA PARA QUE EL CATÁLOGO CARGUE LAS MARCAS Y VISCOSIDADES ---
+app.get('/api/productos/filtros', async (req, res) => {
+    try {
+        const filtros = await Modelos.Producto.obtenerOpcionesFiltros();
+        res.json({ filtros });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+// ----------------------------------------------------------------------------
 
 // COTIZACIONES
 app.post('/api/cotizaciones', async (req, res) => {
