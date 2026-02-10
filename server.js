@@ -51,7 +51,7 @@ const esAdmin = (req, res, next) => {
 };
 
 // ==========================================
-// 3. LÓGICA DE MODELOS (Sin Bcrypt)
+// 3. LÓGICA DE MODELOS
 // ==========================================
 const Modelos = {
     Usuario: {
@@ -71,8 +71,8 @@ const Modelos = {
     },
     Producto: {
         async listar(filtros = {}) {
-            // Se mantiene el filtro activo = true por defecto
-            let query = 'SELECT * FROM productos WHERE activo = true';
+            // Eliminamos temporalmente 'WHERE activo = true' para asegurar que veas ALGO
+            let query = 'SELECT * FROM productos WHERE 1=1'; 
             const valores = [];
             let contador = 1;
             if (filtros.tipo) { query += ` AND tipo = $${contador}`; valores.push(filtros.tipo); contador++; }
@@ -80,7 +80,6 @@ const Modelos = {
             if (filtros.viscosidad) { query += ` AND viscosidad = $${contador}`; valores.push(filtros.viscosidad); contador++; }
             if (filtros.busqueda) { query += ` AND (nombre ILIKE $${contador} OR descripcion ILIKE $${contador})`; valores.push(`%${filtros.busqueda}%`); contador++; }
             
-            // Ordenamos por creado_en o id como respaldo
             query += ' ORDER BY id DESC'; 
             const res = await pool.query(query, valores);
             return res.rows;
@@ -116,10 +115,7 @@ const Modelos = {
                 await client.query('UPDATE cotizaciones SET total = $1 WHERE id = $2', [total, cotizacion.id]);
                 await client.query('COMMIT');
                 return { ...cotizacion, total };
-            } catch (e) { 
-                await client.query('ROLLBACK'); 
-                throw e; 
-            } finally { client.release(); }
+            } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
         }
     }
 };
@@ -128,54 +124,41 @@ const Modelos = {
 // 4. RUTAS DE LA API
 // ==========================================
 
-// REGISTRO
 app.post('/api/usuarios/registro', async (req, res) => {
     try {
         const { nombre, email, password } = req.body;
         if (!nombre || !email || !password) return res.status(400).json({ mensaje: 'Datos incompletos' });
-        
         const existente = await Modelos.Usuario.obtenerPorEmail(email);
         if (existente) return res.status(409).json({ mensaje: 'El correo ya existe' });
-        
         const nuevo = await Modelos.Usuario.crear(req.body);
         const { password: _, ...usuarioSinPassword } = nuevo;
         const token = jwt.sign(usuarioSinPassword, JWT_SECRET, { expiresIn: '24h' });
         res.status(201).json({ usuario: usuarioSinPassword, token });
-    } catch (e) { 
-        res.status(500).json({ mensaje: e.message }); 
-    }
+    } catch (e) { res.status(500).json({ mensaje: e.message }); }
 });
 
-// LOGIN
 app.post('/api/usuarios/login', async (req, res) => {
     try {
         const { email, password } = req.body;
         const usuario = await Modelos.Usuario.obtenerPorEmail(email);
-        
         if (usuario && usuario.password === password) {
             const { password: _, ...datos } = usuario;
             const token = jwt.sign(datos, JWT_SECRET, { expiresIn: '24h' });
-            console.log(`✅ Acceso concedido: ${email}`);
             return res.json({ usuario: datos, token });
         } else {
-            console.log(`❌ Acceso denegado: ${email}`);
             return res.status(401).json({ mensaje: 'Credenciales inválidas' });
         }
-    } catch (e) { 
-        res.status(500).json({ mensaje: e.message }); 
-    }
+    } catch (e) { res.status(500).json({ mensaje: e.message }); }
 });
 
-// PRODUCTOS - CORRECCIÓN CRUCIAL: Se envía el array directo
+// RUTA DE PRODUCTOS: Enviamos el array directo
 app.get('/api/productos', async (req, res) => {
     try {
         const productos = await Modelos.Producto.listar(req.query);
-        // Enviamos 'productos' directamente (el array res.rows)
         res.json(productos); 
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// COTIZACIONES
 app.post('/api/cotizaciones', async (req, res) => {
     try {
         const { nombre_cliente, email_cliente, items } = req.body;
@@ -185,39 +168,30 @@ app.post('/api/cotizaciones', async (req, res) => {
     } catch (e) { res.status(500).json({ mensaje: e.message }); }
 });
 
-// GESTIÓN DE ESTADOS (ADMIN)
 app.patch('/api/cotizaciones/:id/estado', verificarToken, esAdmin, async (req, res) => {
     const client = await pool.connect();
     try {
         const { estado, comentario } = req.body;
         const { id } = req.params;
         await client.query('BEGIN');
-        
         const cotRes = await client.query('SELECT * FROM cotizaciones WHERE id = $1', [id]);
         if (!cotRes.rows[0]) return res.status(404).json({ mensaje: 'No encontrada' });
-
         if (estado === 'pagado' && cotRes.rows[0].estado !== 'pagado') {
             const items = await client.query('SELECT * FROM cotizacion_items WHERE cotizacion_id = $1', [id]);
             for (const item of items.rows) {
                 await Modelos.Producto.descontarStock(client, item.producto_id, item.cantidad);
             }
         }
-        
         await client.query('UPDATE cotizaciones SET estado = $1 WHERE id = $2', [estado, id]);
         await client.query(
             'INSERT INTO historial_cotizaciones (cotizacion_id, estado_nuevo, usuario_modificador_id, comentario) VALUES ($1, $2, $3, $4)',
             [id, estado, req.usuario.id, comentario]
         );
-        
         await client.query('COMMIT');
         res.json({ mensaje: 'Estado actualizado' });
-    } catch (e) { 
-        await client.query('ROLLBACK'); 
-        res.status(500).json({ mensaje: e.message }); 
-    } finally { client.release(); }
+    } catch (e) { await client.query('ROLLBACK'); res.status(500).json({ mensaje: e.message }); } finally { client.release(); }
 });
 
-// ESTADÍSTICAS (ADMIN)
 app.get('/api/admin/estadisticas', verificarToken, esAdmin, async (req, res) => {
     try {
         const stats = await pool.query(`SELECT COUNT(*) as total, SUM(total) as ingresos FROM cotizaciones`);
@@ -245,6 +219,5 @@ app.use((req, res) => {
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-    console.log(`🚀 Servidor activo en http://localhost:${PORT}`);
+    console.log(`🚀 Servidor activo en puerto ${PORT}`);
 });
-
