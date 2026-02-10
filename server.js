@@ -12,6 +12,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'secret_key_lubricadora_2026';
 // ==========================================
 // 1. CONFIGURACIÓN DE CONEXIÓN
 // ==========================================
+// Mantenemos tu string de Supabase pero priorizamos la variable de entorno
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL || `postgresql://postgres:fVVPC0QNTd3agHiZ@db.wsjtbqsteemsktfmgexj.supabase.co:5432/postgres`,
     ssl: { rejectUnauthorized: false }
@@ -51,7 +52,7 @@ const esAdmin = (req, res, next) => {
 };
 
 // ==========================================
-// 3. LÓGICA DE MODELOS (Sin Bcrypt)
+// 3. LÓGICA DE MODELOS
 // ==========================================
 const Modelos = {
     Usuario: {
@@ -125,6 +126,7 @@ const Modelos = {
 // 4. RUTAS DE LA API
 // ==========================================
 
+// REGISTRO
 app.post('/api/usuarios/registro', async (req, res) => {
     try {
         const { nombre, email, password } = req.body;
@@ -138,6 +140,7 @@ app.post('/api/usuarios/registro', async (req, res) => {
     } catch (e) { res.status(500).json({ mensaje: e.message }); }
 });
 
+// LOGIN
 app.post('/api/usuarios/login', async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -152,13 +155,16 @@ app.post('/api/usuarios/login', async (req, res) => {
     } catch (e) { res.status(500).json({ mensaje: e.message }); }
 });
 
+// PRODUCTOS - CORREGIDO PARA EL FRONTEND
 app.get('/api/productos', async (req, res) => {
     try {
         const productos = await Modelos.Producto.listar(req.query);
-        res.json({ productos }); 
+        // Enviamos el array directo para que Catalogo.html funcione con data.map()
+        res.json(productos); 
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// COTIZACIONES
 app.post('/api/cotizaciones', async (req, res) => {
     try {
         const { nombre_cliente, email_cliente, items } = req.body;
@@ -168,6 +174,7 @@ app.post('/api/cotizaciones', async (req, res) => {
     } catch (e) { res.status(500).json({ mensaje: e.message }); }
 });
 
+// GESTIÓN DE ESTADOS (ADMIN)
 app.patch('/api/cotizaciones/:id/estado', verificarToken, esAdmin, async (req, res) => {
     const client = await pool.connect();
     try {
@@ -176,7 +183,6 @@ app.patch('/api/cotizaciones/:id/estado', verificarToken, esAdmin, async (req, r
         await client.query('BEGIN');
         const cotRes = await client.query('SELECT * FROM cotizaciones WHERE id = $1', [id]);
         if (!cotRes.rows[0]) return res.status(404).json({ mensaje: 'No encontrada' });
-
         if (estado === 'pagado' && cotRes.rows[0].estado !== 'pagado') {
             const items = await client.query('SELECT * FROM cotizacion_items WHERE cotizacion_id = $1', [id]);
             for (const item of items.rows) {
@@ -190,12 +196,10 @@ app.patch('/api/cotizaciones/:id/estado', verificarToken, esAdmin, async (req, r
         );
         await client.query('COMMIT');
         res.json({ mensaje: 'Estado actualizado' });
-    } catch (e) { 
-        await client.query('ROLLBACK'); 
-        res.status(500).json({ mensaje: e.message }); 
-    } finally { client.release(); }
+    } catch (e) { await client.query('ROLLBACK'); res.status(500).json({ mensaje: e.message }); } finally { client.release(); }
 });
 
+// ESTADÍSTICAS (ADMIN)
 app.get('/api/admin/estadisticas', verificarToken, esAdmin, async (req, res) => {
     try {
         const stats = await pool.query(`SELECT COUNT(*) as total, SUM(total) as ingresos FROM cotizaciones`);
@@ -212,17 +216,16 @@ app.get('/api/admin/estadisticas', verificarToken, esAdmin, async (req, res) => 
 });
 
 // ==========================================
-// 5. ARCHIVOS ESTÁTICOS Y REDIRECCIÓN (Ajustado)
+// 5. ARCHIVOS ESTÁTICOS Y REDIRECCIÓN
 // ==========================================
-app.use(express.static(path.join(__dirname)));
+app.use(express.static(__dirname));
 
-app.get('*', (req, res) => {
+app.use((req, res) => {
     if (req.url.startsWith('/api')) return res.status(404).json({ error: 'API no encontrada' });
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// ESCUCHAR EN 0.0.0.0 ES OBLIGATORIO PARA RENDER
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Servidor en línea en el puerto ${PORT}`);
+app.listen(PORT, () => {
+    console.log(`🚀 Servidor activo en puerto ${PORT}`);
 });
