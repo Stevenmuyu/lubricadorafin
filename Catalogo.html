@@ -38,21 +38,24 @@
             position: sticky;
             top: 0;
             z-index: 1000;
+            backdrop-filter: blur(10px); /* Mejora visual */
         }
         nav a {
             color: var(--text-dim);
             text-decoration: none;
             font-weight: 500;
-            transition: color 0.3s;
+            transition: all 0.3s;
         }
         nav a.active, nav a:hover { color: var(--primary); }
 
         .admin-access {
             color: #ffeb3b !important;
             border: 1px solid #ffeb3b;
-            padding: 2px 8px;
-            border-radius: 4px;
+            padding: 2px 12px;
+            border-radius: 6px;
+            transition: all 0.3s;
         }
+        .admin-access:hover { background: rgba(255, 235, 59, 0.1); }
 
         /* --- LAYOUT --- */
         .container {
@@ -66,14 +69,17 @@
             box-sizing: border-box;
         }
 
+        /* --- SIDEBAR DE FILTROS --- */
         .sidebar {
             background-color: var(--card-bg);
             padding: 1.5rem;
             border-radius: 16px;
             height: fit-content;
             border: 1px solid var(--border);
+            position: sticky;
+            top: 100px;
         }
-        .sidebar h2 { font-size: 1.2rem; margin-top: 0; color: var(--primary); }
+        .sidebar h2 { font-size: 1.2rem; margin-top: 0; color: var(--primary); letter-spacing: 1px; }
         
         .filter-group { margin-bottom: 1.5rem; }
         .filter-group label { display: block; font-size: 0.85rem; color: var(--text-dim); margin-bottom: 8px; }
@@ -86,19 +92,25 @@
             border-radius: 8px;
             color: white;
             outline: none;
+            transition: all 0.3s;
+            box-sizing: border-box;
         }
+        .filter-group input:focus { border-color: var(--primary); background: #333; }
 
         .btn-reset {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             background: transparent;
             border: 1px solid var(--border);
             color: var(--text-dim);
             border-radius: 8px;
             cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
         }
+        .btn-reset:hover { border-color: var(--error); color: var(--error); }
 
-        /* --- GRID --- */
+        /* --- GRID DE PRODUCTOS --- */
         .products-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -110,53 +122,92 @@
             border-radius: 16px;
             border: 1px solid var(--border);
             overflow: hidden;
-            transition: all 0.3s ease;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             display: flex;
             flex-direction: column;
         }
         .product-card:hover {
-            transform: translateY(-8px);
+            transform: translateY(-10px);
             border-color: var(--primary);
+            box-shadow: 0 15px 35px rgba(100, 108, 255, 0.2);
         }
 
         .img-container {
-            height: 200px;
+            height: 220px;
             background: #111;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 4.5rem;
             position: relative;
+            overflow: hidden;
         }
+        
+        .product-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            transition: transform 0.5s;
+            padding: 15px;
+            background: #fff; /* Fondo blanco para resaltar productos */
+        }
+        .product-card:hover img { transform: scale(1.1); }
+
         .badge {
             position: absolute;
             top: 12px;
             left: 12px;
             background: var(--primary);
             font-size: 0.7rem;
-            padding: 4px 10px;
-            border-radius: 6px;
+            font-weight: bold;
+            padding: 5px 12px;
+            border-radius: 20px;
             text-transform: uppercase;
+            z-index: 2;
         }
 
         .info { padding: 1.5rem; flex-grow: 1; }
-        .price { font-size: 1.5rem; font-weight: 700; color: var(--primary); margin: 10px 0; }
+        .info h3 { margin: 0 0 8px 0; font-size: 1.2rem; line-height: 1.4; color: #fff; }
+        .brand { color: var(--primary); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; display: block; }
+        
+        .specs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 15px; }
+        .tag { background: #2a2a2a; font-size: 0.75rem; padding: 4px 12px; border-radius: 6px; border: 1px solid #444; color: var(--text-main); }
 
-        .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .price { font-size: 1.7rem; font-weight: 800; color: #fff; margin: 15px 0; letter-spacing: -1px; }
+
+        .actions { display: grid; grid-template-columns: 1fr 1.2fr; gap: 10px; }
         .btn {
-            padding: 12px;
-            border-radius: 8px;
+            padding: 14px 8px;
+            border-radius: 10px;
             border: none;
             cursor: pointer;
-            font-weight: 600;
-            text-align: center;
-            text-decoration: none;
+            font-weight: 700;
+            font-size: 0.85rem;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
         }
-        .btn-detail { background: #333; color: white; }
+        .btn-detail { background: #333; color: white; text-decoration: none; }
+        .btn-detail:hover { background: #444; }
         .btn-add { background: var(--primary); color: white; }
+        .btn-add:hover { background: var(--primary-hover); box-shadow: 0 4px 15px rgba(100, 108, 255, 0.4); }
+
+        /* Loader animado */
+        #loader {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 300px;
+            font-weight: 500;
+            color: var(--text-dim);
+        }
 
         @media (max-width: 900px) {
             .container { grid-template-columns: 1fr; }
+            .sidebar { position: static; margin-bottom: 2rem; }
         }
     </style>
 </head>
@@ -164,7 +215,7 @@
 
     <nav id="navbar">
         <a href="index.html">Inicio</a>
-        <a href="Catalogo.html" class="active">Catálogo</a>
+        <a href="catalogo.html" class="active">Catálogo</a>
         <a href="Carrito.html">Carrito</a>
         <a href="login.html" id="nav-login">Login</a>
     </nav>
@@ -174,7 +225,7 @@
             <h2>Filtros</h2>
             <div class="filter-group">
                 <label>Buscador</label>
-                <input type="text" id="search" placeholder="Nombre de producto...">
+                <input type="text" id="search" placeholder="Buscar marca o modelo...">
             </div>
             <div class="filter-group">
                 <label>Categoría</label>
@@ -195,7 +246,10 @@
         </aside>
 
         <main>
-            <div id="loader" style="text-align: center; padding: 3rem;">Conectando con la base de datos...</div>
+            <div id="loader">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">🔄</div>
+                Cargando inventario...
+            </div>
             <div class="products-grid" id="grid"></div>
         </main>
     </div>
@@ -204,117 +258,162 @@
         let allProducts = [];
         const grid = document.getElementById('grid');
         const loader = document.getElementById('loader');
+        const navbar = document.getElementById('navbar');
+        const navLogin = document.getElementById('nav-login');
 
-        // 1. VERIFICAR AUTENTICACIÓN
+        // --- GESTIÓN DE INTERFAZ SEGÚN USUARIO ---
         function checkAuth() {
-            const user = JSON.parse(localStorage.getItem('usuario'));
-            if (user) {
-                const navLogin = document.getElementById('nav-login');
+            const usuario = JSON.parse(localStorage.getItem('usuario'));
+            if (usuario) {
                 if (navLogin) navLogin.style.display = 'none';
                 
-                if (user.rol === 'admin' && !document.querySelector('.admin-access')) {
+                // Soporta 'rol' o 'Rol' por compatibilidad con diferentes DBs
+                const userRol = usuario.rol || usuario.Rol;
+                if (userRol === 'admin') {
                     const adminLink = document.createElement('a');
                     adminLink.href = 'admin.html';
-                    adminLink.innerText = 'Admin';
+                    adminLink.innerText = 'Panel Admin';
                     adminLink.className = 'admin-access';
-                    document.getElementById('navbar').appendChild(adminLink);
+                    navbar.appendChild(adminLink);
                 }
+
+                const logoutBtn = document.createElement('a');
+                logoutBtn.href = '#';
+                logoutBtn.innerText = 'Salir';
+                logoutBtn.style.color = 'var(--error)';
+                logoutBtn.onclick = (e) => {
+                    e.preventDefault();
+                    localStorage.clear();
+                    window.location.reload();
+                };
+                navbar.appendChild(logoutBtn);
             }
         }
 
-        // 2. OBTENER PRODUCTOS (FETCH)
+        const getEmoji = (type) => {
+            const t = type ? type.toLowerCase() : '';
+            const map = { aceite: '🛢️', filtro: '🔧', aditivo: '⚗️' };
+            return map[t] || '📦';
+        };
+
+        function agregarAlCarrito(id, nombre, precio) {
+            let carrito = JSON.parse(localStorage.getItem('carrito')) || [];
+            const existe = carrito.find(item => item.id === id);
+            
+            if (existe) {
+                existe.cantidad += 1;
+            } else {
+                carrito.push({ id, nombre, precio: parseFloat(precio), cantidad: 1 });
+            }
+            
+            localStorage.setItem('carrito', JSON.stringify(carrito));
+            
+            // Efecto visual en el botón
+            const btn = event.currentTarget;
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '✅ Agregado';
+            btn.style.background = 'var(--success)';
+            btn.disabled = true;
+            
+            setTimeout(() => {
+                btn.innerHTML = originalHTML;
+                btn.style.background = 'var(--primary)';
+                btn.disabled = false;
+            }, 1000);
+        }
+
         async function fetchProducts() {
             try {
-                // Forzamos que no use caché del navegador con un timestamp
-                const res = await fetch(`/api/productos?t=${new Date().getTime()}`);
-                if (!res.ok) throw new Error('Error en la respuesta del servidor');
-                
+                const res = await fetch('/api/productos');
                 const data = await res.json();
                 
-                // NORMALIZACIÓN: Aceptamos array directo o el objeto envuelto
-                allProducts = Array.isArray(data) ? data : (data.productos || []);
+                // Normaliza la respuesta para que siempre sea un Array
+                allProducts = Array.isArray(data) ? data : (data.productos || []); 
 
-                console.log("Productos cargados:", allProducts.length);
+                // Llenar marcas de forma inteligente
+                const brandSelect = document.getElementById('brandFilter');
+                const uniqueBrands = [...new Set(allProducts.map(p => p.marca || p.Marca).filter(Boolean))].sort();
+                
+                uniqueBrands.forEach(b => {
+                    const opt = new Option(b, b);
+                    brandSelect.add(opt);
+                });
 
-                if (allProducts.length > 0) {
-                    fillBrands(allProducts);
-                    loader.style.display = 'none';
-                    render(allProducts);
-                } else {
-                    loader.innerHTML = "No hay productos registrados en la base de datos.";
-                }
+                loader.style.display = 'none';
+                render(allProducts);
             } catch (err) {
-                loader.innerHTML = "❌ Error: No se pudo cargar el catálogo. Revisa la conexión.";
-                console.error("Fetch error:", err);
+                loader.innerHTML = "<div style='color:var(--error)'>❌ Error al conectar con el servidor.</div>";
+                console.error(err);
             }
         }
 
-        function fillBrands(products) {
-            const brandSelect = document.getElementById('brandFilter');
-            const brands = [...new Set(products.map(p => p.marca).filter(b => b))];
-            brandSelect.innerHTML = '<option value="">Todas las marcas</option>';
-            brands.forEach(b => brandSelect.add(new Option(b, b)));
-        }
-
-        // 3. RENDERIZAR EN PANTALLA
         function render(data) {
-            if (data.length === 0) {
-                grid.innerHTML = `<p style="grid-column: 1/-1; text-align:center; color: var(--text-dim);">No coinciden productos con los filtros.</p>`;
+            if (!data || data.length === 0) {
+                grid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; color: var(--text-dim); padding: 4rem;">
+                    <h3>No se encontraron productos</h3>
+                    <p>Intenta ajustar los filtros de búsqueda.</p>
+                </div>`;
                 return;
             }
 
-            grid.innerHTML = data.map(p => `
+            grid.innerHTML = data.map(p => {
+                // Compatibilidad de nombres de campos (minúsculas y mayúsculas)
+                const id = p.id || p.ID;
+                const nombre = p.nombre || p.Nombre || 'Producto sin nombre';
+                const precio = parseFloat(p.precio || p.Precio || 0);
+                const marca = p.marca || p.Marca || 'Genérico';
+                const tipo = p.tipo || p.Tipo || 'Otros';
+                const img = p.imagen_url || p.Imagen_Url;
+                const visc = p.viscosidad || p.Viscosidad;
+                const tAceite = p.tipo_aceite || p.Tipo_Aceite;
+
+                return `
                 <article class="product-card">
                     <div class="img-container">
-                        ${p.imagen_url ? 
-                            `<img src="${p.imagen_url}" style="width:100%; height:100%; object-fit:contain; background:white; padding:10px;" onerror="this.src='https://via.placeholder.com/200?text=📦'">` : 
-                            `<span>${p.tipo === 'aceite' ? '🛢️' : (p.tipo === 'filtro' ? '🔧' : '📦')}</span>`
-                        }
-                        <span class="badge">${p.tipo}</span>
+                        ${img ? `<img src="${img}" alt="${nombre}">` : getEmoji(tipo)}
+                        <span class="badge">${tipo}</span>
                     </div>
                     <div class="info">
-                        <span style="color:var(--text-dim); font-size:0.8rem;">${p.marca || 'Genérico'}</span>
-                        <h3 style="margin:5px 0;">${p.nombre}</h3>
-                        <div style="display:flex; gap:5px; margin-bottom:10px;">
-                            ${p.viscosidad ? `<span style="background:#2a2a2a; padding:2px 8px; border-radius:4px; font-size:0.7rem;">${p.viscosidad}</span>` : ''}
+                        <span class="brand">${marca}</span>
+                        <h3>${nombre}</h3>
+                        <div class="specs">
+                            ${visc ? `<span class="tag">${visc}</span>` : ''}
+                            ${tAceite ? `<span class="tag">${tAceite}</span>` : ''}
                         </div>
-                        <p class="price">$${parseFloat(p.precio || 0).toFixed(2)}</p>
+                        <p class="price">$${precio.toFixed(2)}</p>
                         <div class="actions">
-                            <a href="producto.html?id=${p.id}" class="btn btn-detail">Ver</a>
-                            <button class="btn btn-add" onclick="addToCart(${p.id}, '${p.nombre}', ${p.precio})">🛒 Añadir</button>
+                            <a href="producto.html?id=${id}" class="btn btn-detail">Ver Más</a>
+                            <button class="btn btn-add" onclick="agregarAlCarrito(${id}, '${nombre.replace(/'/g, "\\'")}', ${precio})">
+                                🛒 Añadir
+                            </button>
                         </div>
                     </div>
                 </article>
-            `).join('');
+                `;
+            }).join('');
         }
 
-        // 4. CARRITO
-        function addToCart(id, nombre, precio) {
-            let cart = JSON.parse(localStorage.getItem('carrito')) || [];
-            const item = cart.find(i => i.id === id);
-            if (item) item.cantidad++;
-            else cart.push({ id, nombre, precio: parseFloat(precio), cantidad: 1 });
-            
-            localStorage.setItem('carrito', JSON.stringify(cart));
-            alert(`${nombre} añadido al carrito`);
-        }
-
-        // 5. FILTROS DINÁMICOS
         function applyFilters() {
-            const search = document.getElementById('search').value.toLowerCase();
-            const type = document.getElementById('typeFilter').value;
-            const brand = document.getElementById('brandFilter').value;
+            const searchTerm = document.getElementById('search').value.toLowerCase();
+            const typeTerm = document.getElementById('typeFilter').value.toLowerCase();
+            const brandTerm = document.getElementById('brandFilter').value;
 
             const filtered = allProducts.filter(p => {
-                const matchSearch = p.nombre.toLowerCase().includes(search);
-                const matchType = !type || p.tipo === type;
-                const matchBrand = !brand || p.marca === brand;
-                return matchSearch && matchType && matchBrand;
+                const nombre = (p.nombre || p.Nombre || '').toLowerCase();
+                const marca = (p.marca || p.Marca || '').toLowerCase();
+                const tipo = (p.tipo || p.Tipo || '').toLowerCase();
+                const marcaReal = p.marca || p.Marca || '';
+
+                const matchesSearch = nombre.includes(searchTerm) || marca.includes(searchTerm);
+                const matchesType = !typeTerm || tipo === typeTerm;
+                const matchesBrand = !brandTerm || marcaReal === brandTerm;
+
+                return matchesSearch && matchesType && matchesBrand;
             });
             render(filtered);
         }
 
-        // Listeners
+        // Eventos vinculados
         document.getElementById('search').addEventListener('input', applyFilters);
         document.getElementById('typeFilter').addEventListener('change', applyFilters);
         document.getElementById('brandFilter').addEventListener('change', applyFilters);
@@ -325,7 +424,7 @@
             render(allProducts);
         });
 
-        // Inicio
+        // Inicialización
         checkAuth();
         fetchProducts();
     </script>
