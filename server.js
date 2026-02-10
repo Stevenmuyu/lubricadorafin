@@ -10,14 +10,11 @@ app.use(express.json());
 const JWT_SECRET = process.env.JWT_SECRET || 'secret_key_lubricadora_2026';
 
 // ==========================================
-// 1. CONFIGURACIÓN DE CONEXIÓN (Mejorada para Producción)
+// 1. CONFIGURACIÓN DE CONEXIÓN
 // ==========================================
 const pool = new Pool({
-    // Prioriza la variable de entorno de Render, si no usa la de respaldo
     connectionString: process.env.DATABASE_URL || `postgresql://postgres:fVVPC0QNTd3agHiZ@db.wsjtbqsteemsktfmgexj.supabase.co:5432/postgres`,
-    ssl: { 
-        rejectUnauthorized: false // Requerido para conectar Render con Supabase
-    }
+    ssl: { rejectUnauthorized: false }
 });
 
 const verificarConexion = async () => {
@@ -80,11 +77,7 @@ const Modelos = {
             if (filtros.tipo) { query += ` AND tipo = $${contador}`; valores.push(filtros.tipo); contador++; }
             if (filtros.marca) { query += ` AND marca ILIKE $${contador}`; valores.push(`%${filtros.marca}%`); contador++; }
             if (filtros.viscosidad) { query += ` AND viscosidad = $${contador}`; valores.push(filtros.viscosidad); contador++; }
-            if (filtros.busqueda) { 
-                query += ` AND (nombre ILIKE $${contador} OR descripcion ILIKE $${contador})`; 
-                valores.push(`%${filtros.busqueda}%`); 
-                contador++; 
-            }
+            if (filtros.busqueda) { query += ` AND (nombre ILIKE $${contador} OR descripcion ILIKE $${contador})`; valores.push(`%${filtros.busqueda}%`); contador++; }
             query += ' ORDER BY creado_en DESC';
             const res = await pool.query(query, valores);
             return res.rows;
@@ -152,8 +145,10 @@ app.post('/api/usuarios/login', async (req, res) => {
         if (usuario && usuario.password === password) {
             const { password: _, ...datos } = usuario;
             const token = jwt.sign(datos, JWT_SECRET, { expiresIn: '24h' });
+            console.log(`✅ Acceso concedido: ${email}`);
             return res.json({ usuario: datos, token });
         } else {
+            console.log(`❌ Acceso denegado: ${email}`);
             return res.status(401).json({ mensaje: 'Credenciales inválidas' });
         }
     } catch (e) { res.status(500).json({ mensaje: e.message }); }
@@ -219,12 +214,12 @@ app.get('/api/admin/estadisticas', verificarToken, esAdmin, async (req, res) => 
 });
 
 // ==========================================
-// 5. ARCHIVOS ESTÁTICOS Y REDIRECCIÓN (Ajustado)
+// 5. ARCHIVOS ESTÁTICOS Y REDIRECCIÓN (Corregido para Render)
 // ==========================================
-// Servir archivos estáticos desde la raíz del proyecto
+// Servimos archivos desde la raíz
 app.use(express.static(path.join(__dirname)));
 
-// Manejar cualquier otra ruta enviándola al index o dando 404 si es API
+// El '*' maneja las rutas de frontend sin romper la API
 app.get('*', (req, res) => {
     if (req.url.startsWith('/api')) {
         return res.status(404).json({ error: 'API no encontrada' });
@@ -232,8 +227,8 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// USAR process.env.PORT es obligatorio para Render
+// IMPORTANTE: Escuchar en 0.0.0.0 para entornos cloud
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Servidor activo en puerto ${PORT}`);
+    console.log(`🚀 Servidor activo y escuchando en el puerto ${PORT}`);
 });
