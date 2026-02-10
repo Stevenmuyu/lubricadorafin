@@ -1,218 +1,39 @@
-require('dotenv').config(); 
-const express = require('express');
-const path = require('path');
-const { Pool } = require('pg');
-const jwt = require('jsonwebtoken');
-const cors = require('cors'); // Agregado para evitar bloqueos de navegador
-
-const app = express();
-app.use(express.json());
-app.use(cors()); // Permitir peticiones desde el frontend
-
-const JWT_SECRET = process.env.JWT_SECRET || 'secret_key_lubricadora_2026';
-
-// ==========================================
-// 1. CONFIGURACIÓN DE CONEXIÓN
-// ==========================================
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL || `postgresql://postgres:fVVPC0QNTd3agHiZ@db.wsjtbqsteemsktfmgexj.supabase.co:5432/postgres`,
-    ssl: { rejectUnauthorized: false }
-});
-
-const verificarConexion = async () => {
-    try {
-        const res = await pool.query('SELECT NOW()');
-        console.log(`✅ Conexión exitosa a Supabase: ${res.rows[0].now}`);
-    } catch (err) {
-        console.error('❌ Error crítico: No se pudo conectar a Supabase', err.message);
-    }
-};
-verificarConexion();
-
-// ==========================================
-// 2. MIDDLEWARES (Seguridad y Roles)
-// ==========================================
-const verificarToken = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-    if (!token) return res.status(403).json({ error: 'Acceso denegado' });
-
-    jwt.verify(token, JWT_SECRET, (err, user) => {
-        if (err) return res.status(401).json({ error: 'Token inválido' });
-        req.usuario = user;
-        next();
-    });
-};
-
-const esAdmin = (req, res, next) => {
-    if (req.usuario && req.usuario.rol === 'admin') {
-        next();
-    } else {
-        res.status(403).json({ error: 'Acceso restringido: requiere permisos de administrador' });
-    }
-};
-
-// ==========================================
-// 3. LÓGICA DE MODELOS
-// ==========================================
-const Modelos = {
-    Usuario: {
-        async crear(datos) {
-            const { nombre, email, password, rol, telefono, empresa } = datos;
-            const res = await pool.query(
-                `INSERT INTO usuarios (nombre, email, password, rol, telefono, empresa) 
-                 VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, nombre, email, rol, telefono, empresa`,
-                [nombre, email, password, rol || 'cliente', telefono || null, empresa || null]
-            );
-            return res.rows[0];
-        },
-        async obtenerPorEmail(email) {
-            const res = await pool.query('SELECT * FROM usuarios WHERE email = $1', [email]);
-            return res.rows[0];
-        }
-    },
-    Producto: {
-        async listar(filtros = {}) {
-            // Cambio importante: Se quita "activo = true" temporalmente para asegurar que veas datos
-            let query = 'SELECT * FROM productos WHERE 1=1'; 
-            const valores = [];
-            let contador = 1;
-
-            if (filtros.tipo) { query += ` AND tipo = $${contador}`; valores.push(filtros.tipo); contador++; }
-            if (filtros.marca) { query += ` AND marca ILIKE $${contador}`; valores.push(`%${filtros.marca}%`); contador++; }
-            if (filtros.busqueda) { query += ` AND (nombre ILIKE $${contador} OR descripcion ILIKE $${contador})`; valores.push(`%${filtros.busqueda}%`); contador++; }
-            
-            query += ' ORDER BY id DESC';
-            const res = await pool.query(query, valores);
-            return res.rows;
-        },
-        async descontarStock(client, id, cantidad) {
-            const prod = await client.query('SELECT stock FROM productos WHERE id = $1', [id]);
-            if (prod.rows.length === 0 || prod.rows[0].stock < cantidad) throw new Error(`Stock insuficiente para el ID ${id}`);
-            await client.query('UPDATE productos SET stock = stock - $1 WHERE id = $2', [cantidad, id]);
-        }
-    },
-    Cotizacion: {
-        async crear(datos, items) {
-            const client = await pool.connect();
-            try {
-                await client.query('BEGIN');
-                const { usuario_id, nombre_cliente, email_cliente, telefono_cliente, empresa_cliente, notas } = datos;
-                const resCot = await client.query(
-                    `INSERT INTO cotizaciones (usuario_id, nombre_cliente, email_cliente, telefono_cliente, empresa_cliente, notas) 
-                     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-                    [usuario_id || null, nombre_cliente, email_cliente, telefono_cliente, empresa_cliente, notas]
-                );
-                const cotizacion = resCot.rows[0];
-                let total = 0;
-                for (const item of items) {
-                    const subtotal = item.cantidad * item.precio_unitario;
-                    total += subtotal;
-                    await client.query(
-                        `INSERT INTO cotizacion_items (cotizacion_id, producto_id, cantidad, precio_unitario, subtotal) 
-                         VALUES ($1, $2, $3, $4, $5)`,
-                        [cotizacion.id, item.producto_id, item.cantidad, item.precio_unitario, subtotal]
-                    );
-                }
-                await client.query('UPDATE cotizaciones SET total = $1 WHERE id = $2', [total, cotizacion.id]);
-                await client.query('COMMIT');
-                return { ...cotizacion, total };
-            } catch (e) { 
-                await client.query('ROLLBACK'); 
-                throw e; 
-            } finally { client.release(); }
-        }
-    }
-};
-
-// ==========================================
-// 4. RUTAS DE LA API
-// ==========================================
-
-// REGISTRO
-app.post('/api/usuarios/registro', async (req, res) => {
-    try {
-        const { nombre, email, password } = req.body;
-        if (!nombre || !email || !password) return res.status(400).json({ mensaje: 'Datos incompletos' });
-        const existente = await Modelos.Usuario.obtenerPorEmail(email);
-        if (existente) return res.status(409).json({ mensaje: 'El correo ya existe' });
-        const nuevo = await Modelos.Usuario.crear(req.body);
-        const { password: _, ...usuarioSinPassword } = nuevo;
-        const token = jwt.sign(usuarioSinPassword, JWT_SECRET, { expiresIn: '24h' });
-        res.status(201).json({ usuario: usuarioSinPassword, token });
-    } catch (e) { res.status(500).json({ mensaje: e.message }); }
-});
-
-// LOGIN
+// RUTA DE LOGIN (Para que tu login.html funcione)
 app.post('/api/usuarios/login', async (req, res) => {
+    const { email, password } = req.body;
+
     try {
-        const { email, password } = req.body;
-        const usuario = await Modelos.Usuario.obtenerPorEmail(email);
-        if (usuario && usuario.password === password) {
-            const { password: _, ...datos } = usuario;
-            const token = jwt.sign(datos, JWT_SECRET, { expiresIn: '24h' });
-            return res.json({ usuario: datos, token });
-        } else {
-            return res.status(401).json({ mensaje: 'Credenciales inválidas' });
+        // 1. Buscamos al usuario en la tabla 'usuarios' de Supabase
+        const { data: usuario, error } = await supabase
+            .from('usuarios')
+            .select('*')
+            .eq('email', email)
+            .eq('password', password) // Nota: En producción usar bcrypt
+            .single();
+
+        if (error || !usuario) {
+            return res.status(401).json({ mensaje: "Usuario o contraseña incorrectos" });
         }
-    } catch (e) { res.status(500).json({ mensaje: e.message }); }
-});
 
-// PRODUCTOS (Ajustado para devolver el formato que espera tu Catalogo.html)
-app.get('/api/productos', async (req, res) => {
-    try {
-        const productos = await Modelos.Producto.listar(req.query);
-        // Enviamos tanto el objeto productos como el array directo por compatibilidad
-        res.json(productos); 
-    } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// COTIZACIONES
-app.post('/api/cotizaciones', async (req, res) => {
-    try {
-        const { nombre_cliente, email_cliente, items } = req.body;
-        if (!nombre_cliente || !email_cliente || !items?.length) return res.status(400).json({ mensaje: 'Datos incompletos' });
-        const cotizacion = await Modelos.Cotizacion.crear(req.body, items);
-        res.status(201).json({ cotizacion });
-    } catch (e) { res.status(500).json({ mensaje: e.message }); }
-});
-
-// GESTIÓN DE ESTADOS (ADMIN)
-app.patch('/api/cotizaciones/:id/estado', verificarToken, esAdmin, async (req, res) => {
-    const client = await pool.connect();
-    try {
-        const { estado, comentario } = req.body;
-        const { id } = req.params;
-        await client.query('BEGIN');
-        const cotRes = await client.query('SELECT * FROM cotizaciones WHERE id = $1', [id]);
-        if (!cotRes.rows[0]) return res.status(404).json({ mensaje: 'No encontrada' });
-        if (estado === 'pagado' && cotRes.rows[0].estado !== 'pagado') {
-            const items = await client.query('SELECT * FROM cotizacion_items WHERE cotizacion_id = $1', [id]);
-            for (const item of items.rows) {
-                await Modelos.Producto.descontarStock(client, item.producto_id, item.cantidad);
+        // 2. Si todo está bien, devolvemos los datos del usuario
+        // El frontend recibirá esto y lo guardará en localStorage
+        res.json({
+            mensaje: "Login exitoso",
+            usuario: {
+                id: usuario.id,
+                nombre: usuario.nombre,
+                email: usuario.email,
+                rol: usuario.rol // Asegúrate de que en Supabase la columna se llame 'rol'
             }
-        }
-        await client.query('UPDATE cotizaciones SET estado = $1 WHERE id = $2', [estado, id]);
-        await client.query('COMMIT');
-        res.json({ mensaje: 'Estado actualizado' });
-    } catch (e) { 
-        await client.query('ROLLBACK'); 
-        res.status(500).json({ mensaje: e.message }); 
-    } finally { client.release(); }
+        });
+
+    } catch (err) {
+        console.error("Error en login:", err.message);
+        res.status(500).json({ mensaje: "Error interno del servidor" });
+    }
 });
 
-// ==========================================
-// 5. ARCHIVOS ESTÁTICOS Y SERVICIO DE PÁGINAS
-// ==========================================
-app.use(express.static(__dirname));
-
-// Rutas explícitas para evitar el "Not Found" en Render
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
-app.get('/Catalogo.html', (req, res) => res.sendFile(path.join(__dirname, 'Catalogo.html')));
-app.get('/login.html', (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
-app.get('/Carrito.html', (req, res) => res.sendFile(path.join(__dirname, 'Carrito.html')));
-
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-    console.log(`🚀 Servidor activo en puerto ${PORT}`);
+// Asegúrate de que el servidor sepa dónde está el archivo físico
+app.get('/login.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'login.html'));
 });
