@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catálogo Premium - Lubricadora</title>
+    <style>
+        :root {
+            --primary: #646cff;
+            --primary-hover: #535bf2;
+            --bg-dark: #242424;
+            --card-bg: #1a1a1a;
+            --text-main: rgba(255, 255, 255, 0.87);
+            --text-dim: #888;
+            --border: #333;
+            --success: #4caf50;
+            --error: #ff4d4d;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* --- NAVEGACIÓN --- */
+        nav {
+            background-color: var(--card-bg);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        nav a {
+            color: var(--text-dim);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        nav a.active, nav a:hover { color: var(--primary); }
+
+        /* Estilo especial para Admin */
+        .admin-access {
+            color: #ffeb3b !important;
+            border: 1px solid #ffeb3b;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        /* --- LAYOUT --- */
+        .container {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 2rem;
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* --- SIDEBAR DE FILTROS --- */
+        .sidebar {
+            background-color: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 16px;
+            height: fit-content;
+            border: 1px solid var(--border);
+        }
+        .sidebar h2 { font-size: 1.2rem; margin-top: 0; color: var(--primary); }
+        
+        .filter-group { margin-bottom: 1.5rem; }
+        .filter-group label { display: block; font-size: 0.85rem; color: var(--text-dim); margin-bottom: 8px; }
+        
+        .filter-group input, .filter-group select {
+            width: 100%;
+            padding: 12px;
+            background: #2a2a2a;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: white;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        .filter-group input:focus { border-color: var(--primary); }
+
+        .btn-reset {
+            width: 100%;
+            padding: 10px;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-reset:hover { background: #333; color: white; }
+
+        /* --- GRID DE PRODUCTOS --- */
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .product-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        .product-card:hover {
+            transform: translateY(-8px);
+            border-color: var(--primary);
+            box-shadow: 0 10px 30px rgba(100, 108, 255, 0.15);
+        }
+
+        .img-container {
+            height: 200px;
+            background: #111;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4.5rem;
+            position: relative;
+        }
+        .badge {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: var(--primary);
+            font-size: 0.7rem;
+            font-weight: bold;
+            padding: 4px 10px;
+            border-radius: 6px;
+            text-transform: uppercase;
+        }
+
+        .info { padding: 1.5rem; flex-grow: 1; }
+        .info h3 { margin: 0 0 8px 0; font-size: 1.25rem; }
+        .brand { color: var(--text-dim); font-size: 0.9rem; margin-bottom: 12px; display: block; }
+        
+        .specs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 15px; }
+        .tag { background: #2a2a2a; font-size: 0.75rem; padding: 4px 10px; border-radius: 4px; border: 1px solid #333; }
+
+        .price { font-size: 1.5rem; font-weight: 700; color: var(--primary); margin: 10px 0; }
+
+        .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .btn {
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+        .btn-detail { background: #333; color: white; text-decoration: none; text-align: center; }
+        .btn-add { background: var(--primary); color: white; }
+        .btn-add:hover { background: var(--primary-hover); }
+
+        @media (max-width: 900px) {
+            .container { grid-template-columns: 1fr; }
+            .sidebar { position: static; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav id="navbar">
+        <a href="index.html">Inicio</a>
+        <a href="catalogo.html" class="active">Catálogo</a>
+        <a href="Carrito.html">Carrito</a>
+        <a href="login.html" id="nav-login">Login</a>
+    </nav>
+
+    <div class="container">
+        <aside class="sidebar">
+            <h2>Filtros</h2>
+            <div class="filter-group">
+                <label>Buscador</label>
+                <input type="text" id="search" placeholder="Nombre de producto...">
+            </div>
+            <div class="filter-group">
+                <label>Categoría</label>
+                <select id="typeFilter">
+                    <option value="">Todas</option>
+                    <option value="aceite">Aceites</option>
+                    <option value="filtro">Filtros</option>
+                    <option value="aditivo">Aditivos</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Marca</label>
+                <select id="brandFilter">
+                    <option value="">Todas las marcas</option>
+                </select>
+            </div>
+            <button class="btn-reset" id="resetBtn">Limpiar Filtros</button>
+        </aside>
+
+        <main>
+            <div id="loader" style="text-align: center; padding: 3rem;">Cargando productos de Supabase...</div>
+            <div class="products-grid" id="grid"></div>
+        </main>
+    </div>
+
+    <script>
+        let allProducts = [];
+        const grid = document.getElementById('grid');
+        const loader = document.getElementById('loader');
+        const navbar = document.getElementById('navbar');
+        const navLogin = document.getElementById('nav-login');
+
+        // --- GESTIÓN DE INTERFAZ SEGÚN USUARIO ---
+        function checkAuth() {
+            const usuario = JSON.parse(localStorage.getItem('usuario'));
+            if (usuario) {
+                if (navLogin) navLogin.style.display = 'none';
+                
+                if (usuario.rol === 'admin') {
+                    const adminLink = document.createElement('a');
+                    adminLink.href = 'admin.html';
+                    adminLink.innerText = 'Admin';
+                    adminLink.className = 'admin-access';
+                    navbar.appendChild(adminLink);
+                }
+
+                const logoutBtn = document.createElement('a');
+                logoutBtn.href = '#';
+                logoutBtn.innerText = 'Salir';
+                logoutBtn.onclick = () => {
+                    localStorage.clear();
+                    window.location.reload();
+                };
+                navbar.appendChild(logoutBtn);
+            }
+        }
+
+        // Mapeo de iconos por si no hay imagen
+        const getEmoji = (type) => {
+            const map = { aceite: '🛢️', filtro: '🔧', aditivo: '⚗️' };
+            return map[type] || '📦';
+        };
+
+        // Función para agregar al carrito (localStorage)
+        function agregarAlCarrito(id, nombre, precio) {
+            let carrito = JSON.parse(localStorage.getItem('carrito')) || [];
+            const existe = carrito.find(item => item.id === id);
+            
+            if (existe) {
+                existe.cantidad += 1;
+            } else {
+                carrito.push({ id, nombre, precio: parseFloat(precio), cantidad: 1 });
+            }
+            
+            localStorage.setItem('carrito', JSON.stringify(carrito));
+            
+            // Animación en el botón
+            const btn = event.target;
+            const originalText = btn.innerText;
+            btn.innerText = '✅ OK';
+            btn.style.background = '#4caf50';
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.style.background = 'var(--primary)';
+            }, 1000);
+        }
+
+        async function fetchProducts() {
+            try {
+                const res = await fetch('/api/productos');
+                const data = await res.json();
+                
+                // Aseguramos que data sea un array
+                allProducts = Array.isArray(data) ? data : (data.productos || []); 
+
+                // Llenar marcas dinámicas en el select
+                const brands = [...new Set(allProducts.map(p => p.marca).filter(b => b))];
+                const brandSelect = document.getElementById('brandFilter');
+                brands.forEach(b => {
+                    const opt = new Option(b, b);
+                    brandSelect.add(opt);
+                });
+
+                loader.style.display = 'none';
+                render(allProducts);
+            } catch (err) {
+                loader.innerHTML = "❌ Error al conectar con el servidor.";
+                console.error(err);
+            }
+        }
+
+        function render(data) {
+            if (!data || data.length === 0) {
+                grid.innerHTML = `<p style="grid-column: 1/-1; text-align:center; color: var(--text-dim);">No se encontraron productos.</p>`;
+                return;
+            }
+
+            grid.innerHTML = data.map(p => `
+                <article class="product-card">
+                    <div class="img-container">
+                        ${p.imagen_url ? `<img src="${p.imagen_url}" style="width:100%; height:100%; object-fit:contain; background:white; padding:10px;">` : getEmoji(p.tipo)}
+                        <span class="badge">${p.tipo}</span>
+                    </div>
+                    <div class="info">
+                        <span class="brand">${p.marca || 'Genérico'}</span>
+                        <h3>${p.nombre}</h3>
+                        <div class="specs">
+                            ${p.viscosidad ? `<span class="tag">${p.viscosidad}</span>` : ''}
+                            ${p.tipo_aceite ? `<span class="tag">${p.tipo_aceite}</span>` : ''}
+                        </div>
+                        <p class="price">$${parseFloat(p.precio).toFixed(2)}</p>
+                        <div class="actions">
+                            <a href="producto.html?id=${p.id}" class="btn btn-detail">Detalles</a>
+                            <button class="btn btn-add" onclick="agregarAlCarrito(${p.id}, '${p.nombre}', ${p.precio})">🛒 Agregar</button>
+                        </div>
+                    </div>
+                </article>
+            `).join('');
+        }
+
+        function applyFilters() {
+            const search = document.getElementById('search').value.toLowerCase();
+            const type = document.getElementById('typeFilter').value;
+            const brand = document.getElementById('brandFilter').value;
+
+            const filtered = allProducts.filter(p => {
+                return (!search || p.nombre.toLowerCase().includes(search)) &&
+                       (!type || p.tipo === type) &&
+                       (!brand || p.marca === brand);
+            });
+            render(filtered);
+        }
+
+        // Eventos
+        document.getElementById('search').addEventListener('input', applyFilters);
+        document.getElementById('typeFilter').addEventListener('change', applyFilters);
+        document.getElementById('brandFilter').addEventListener('change', applyFilters);
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            document.getElementById('search').value = '';
+            document.getElementById('typeFilter').value = '';
+            document.getElementById('brandFilter').value = '';
+            render(allProducts);
+        });
+
+        // Inicio
+        checkAuth();
+        fetchProducts();
+    </script>
+</body>
+</html>

@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administración - Lubricadora</title>
+    <style>
+        :root {
+            --primary: #646cff;
+            --primary-hover: #535bf2;
+            --bg: #242424;
+            --card-bg: #1a1a1a;
+            --text: rgba(255, 255, 255, 0.87);
+            --text-dim: rgba(255, 255, 255, 0.6);
+            --success: #4caf50;
+            --warning: #ffeb3b;
+            --error: #f44336;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            background-color: var(--card-bg);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            color: var(--primary);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-info span {
+            font-weight: bold;
+            color: var(--text);
+        }
+
+        .btn-logout {
+            background-color: var(--error);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-logout:hover {
+            background-color: #d32f2f;
+        }
+
+        main {
+            flex-grow: 1;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 2rem auto;
+            width: 100%;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            border: 1px solid #333;
+            text-align: center;
+        }
+
+        .card h3 {
+            color: var(--primary);
+            margin-top: 0;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .card p {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--text);
+            margin: 0;
+        }
+
+        .card small {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+        }
+
+        .product-list {
+            background-color: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            border: 1px solid #333;
+        }
+
+        .product-list h3 {
+            color: var(--primary);
+            margin-top: 0;
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+        }
+
+        .product-list ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .product-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px dashed #333;
+        }
+
+        .product-list li:last-child {
+            border-bottom: none;
+        }
+
+        .product-list .product-name {
+            font-weight: bold;
+            color: var(--text);
+        }
+
+        .product-list .product-count {
+            background-color: var(--primary);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+        
+        #loading-stats {
+            text-align: center;
+            margin-top: 2rem;
+            color: var(--text-dim);
+        }
+
+        .error-message {
+            color: var(--error);
+            text-align: center;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            header {
+                flex-direction: column;
+                gap: 10px;
+            }
+            header h1 {
+                font-size: 1.5rem;
+            }
+            .user-info {
+                flex-direction: column;
+            }
+            main {
+                padding: 1rem;
+                margin: 1rem auto;
+            }
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Panel de Administrador</h1>
+        <div class="user-info">
+            <span>Bienvenido, <span id="admin-name"></span></span>
+            <button class="btn-logout" id="logout-btn">Cerrar Sesión</button>
+        </div>
+    </header>
+
+    <main>
+        <section class="dashboard-grid">
+            <div class="card">
+                <h3>Total de Cotizaciones</h3>
+                <p id="total-cotizaciones">...</p>
+                <small>Cotizaciones registradas</small>
+            </div>
+            <div class="card">
+                <h3>Ingresos Estimados</h3>
+                <p id="ingresos-estimados">...</p>
+                <small>Suma de todas las cotizaciones</small>
+            </div>
+            </section>
+
+        <section class="product-list">
+            <h3>Productos Más Cotizados</h3>
+            <div id="loading-stats">Cargando estadísticas...</div>
+            <ul id="top-products-list">
+                </ul>
+            <div id="stats-error" class="error-message" style="display:none;"></div>
+        </section>
+    </main>
+
+    <script>
+        // === SEGURIDAD (RECOMENDADO AL INICIO DE admin.html) ===
+        const usuario = JSON.parse(localStorage.getItem('usuario'));
+        const token = localStorage.getItem('token');
+
+        if (!token || !usuario || usuario.rol !== 'admin') {
+            alert("Acceso denegado. Solo administradores pueden ver este panel.");
+            window.location.href = 'login.html'; // Redirigir al login
+        } else {
+            document.getElementById('admin-name').innerText = usuario.nombre;
+            // Opcional: precargar datos del usuario en los inputs si existieran
+        }
+
+        // === FUNCIONALIDAD DEL PANEL ===
+
+        // Cargar estadísticas
+        async function loadStats() {
+            const loadingDiv = document.getElementById('loading-stats');
+            const statsErrorDiv = document.getElementById('stats-error');
+            statsErrorDiv.style.display = 'none'; // Ocultar errores previos
+            loadingDiv.style.display = 'block';
+
+            try {
+                const response = await fetch('/api/admin/estadisticas', {
+                    headers: {
+                        'Authorization': `Bearer ${token}` // Enviar el token
+                    }
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401 || response.status === 403) {
+                        throw new Error("Su sesión ha expirado o no tiene permisos. Por favor, inicie sesión de nuevo.");
+                    }
+                    throw new Error('Error al cargar las estadísticas del servidor.');
+                }
+
+                const data = await response.json();
+                
+                document.getElementById('total-cotizaciones').innerText = data.resumen.total || '0';
+                document.getElementById('ingresos-estimados').innerText = `$${parseFloat(data.resumen.ingresos || 0).toFixed(2)}`;
+
+                const topProductsList = document.getElementById('top-products-list');
+                topProductsList.innerHTML = ''; // Limpiar lista
+                if (data.productosMasCotizados && data.productosMasCotizados.length > 0) {
+                    data.productosMasCotizados.forEach(p => {
+                        const li = document.createElement('li');
+                        li.innerHTML = `<span class="product-name">${p.nombre}</span> <span class="product-count">${p.veces} veces</span>`;
+                        topProductsList.appendChild(li);
+                    });
+                } else {
+                    topProductsList.innerHTML = '<li>No hay productos cotizados aún.</li>';
+                }
+
+            } catch (error) {
+                console.error('Error cargando estadísticas:', error);
+                statsErrorDiv.innerText = error.message;
+                statsErrorDiv.style.display = 'block';
+            } finally {
+                loadingDiv.style.display = 'none'; // Ocultar spinner
+            }
+        }
+
+        // Función para cerrar sesión
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            localStorage.removeItem('token');
+            localStorage.removeItem('usuario');
+            alert('Sesión cerrada.');
+            window.location.href = 'login.html';
+        });
+
+        // Cargar las estadísticas al cargar la página
+        loadStats();
+    </script>
+</body>
+</html>

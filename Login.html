@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Lubricadora</title>
+    <style>
+        :root {
+            --primary: #646cff;
+            --bg: #1a1a1a;
+            --card-bg: #242424;
+            --text: #ffffff;
+            --border: #333;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .login-card {
+            background: var(--card-bg);
+            padding: 2.5rem;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+
+        h2 { text-align: center; color: var(--primary); margin-bottom: 2rem; }
+
+        .form-group { margin-bottom: 1.5rem; }
+        label { display: block; margin-bottom: 8px; font-size: 0.9rem; color: #aaa; }
+        
+        input {
+            width: 100%;
+            padding: 12px;
+            background: #111;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: white;
+            box-sizing: border-box;
+            outline: none;
+        }
+        input:focus { border-color: var(--primary); }
+
+        .btn-login {
+            width: 100%;
+            padding: 12px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+            font-size: 1rem;
+        }
+        .btn-login:hover { background: #535bf2; }
+        .btn-login:disabled { background: #444; cursor: not-allowed; }
+
+        .error-msg {
+            color: #ff4d4d;
+            background: rgba(255, 77, 77, 0.1);
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            display: none;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-card">
+        <h2>Iniciar Sesión</h2>
+        <div id="error-box" class="error-msg"></div>
+        
+        <form id="loginForm">
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="email" placeholder="admin@lubricadora.com" required>
+            </div>
+            <div class="form-group">
+                <label>Contraseña</label>
+                <input type="password" id="password" placeholder="••••••••" required>
+            </div>
+            <button type="submit" class="btn-login" id="submitBtn">Entrar al Sistema</button>
+        </form>
+        
+        <p style="text-align: center; font-size: 0.8rem; color: #666; margin-top: 1.5rem;">
+            Prueba: admin@lubricadora.com / admin123
+        </p>
+    </div>
+
+    <script>
+        const loginForm = document.getElementById('loginForm');
+        const errorBox = document.getElementById('error-box');
+        const submitBtn = document.getElementById('submitBtn');
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            errorBox.style.display = 'none';
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'Verificando...';
+
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+
+            try {
+                // Sincronizado con la ruta de tu server.js
+                const response = await fetch('/api/usuarios/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Limpiamos cualquier sesión previa
+                    localStorage.clear();
+
+                    // Guardamos el token y el objeto usuario completo (que ya trae el ROL de Supabase)
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('usuario', JSON.stringify(data.usuario));
+
+                    console.log("Acceso concedido para:", data.usuario.rol);
+
+                    // Redirección forzada al index para refrescar la barra de navegación
+                    window.location.replace('index.html');
+                } else {
+                    // Si el servidor devuelve error (como en tu captura)
+                    throw new Error(data.mensaje || 'Credenciales inválidas');
+                }
+            } catch (err) {
+                errorBox.innerText = "❌ " + err.message;
+                errorBox.style.display = 'block';
+                submitBtn.disabled = false;
+                submitBtn.innerText = 'Entrar al Sistema';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis Cotizaciones - Lubricadora</title>
+    <style>
+        :root {
+            --primary: #646cff;
+            --bg: #1a1a1a;
+            --card-bg: #242424;
+            --text: #ffffff;
+            --text-secondary: #aaa;
+            --border: #333;
+            /* Estados */
+            --pendiente: #ffb100;
+            --en-proceso: #00a2ff;
+            --cotizado: #4caf50;
+            --rechazado: #f44336;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            line-height: 1.6;
+        }
+
+        nav {
+            background-color: var(--card-bg);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+        }
+        nav a { color: var(--text-secondary); text-decoration: none; margin-left: 20px; }
+        nav a:hover { color: var(--primary); }
+
+        .container { max-width: 1000px; margin: 40px auto; padding: 0 20px; }
+
+        h1 { color: white; margin-bottom: 10px; }
+        .subtitle { color: var(--text-secondary); margin-bottom: 40px; }
+
+        /* --- GRID DE COTIZACIONES --- */
+        .cotizaciones-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .cotizacion-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border);
+            transition: 0.3s;
+        }
+        .cotizacion-card:hover { border-color: var(--primary); }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        /* --- BADGES DE ESTADO --- */
+        .badge {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .badge-pendiente { background: rgba(255, 177, 0, 0.2); color: var(--pendiente); }
+        .badge-en_proceso { background: rgba(0, 162, 255, 0.2); color: var(--en-proceso); }
+        .badge-cotizado { background: rgba(76, 175, 80, 0.2); color: var(--cotizado); }
+        .badge-rechazado { background: rgba(244, 67, 54, 0.2); color: var(--rechazado); }
+
+        .info-item { display: flex; align-items: center; gap: 10px; color: var(--text-secondary); margin-bottom: 8px; font-size: 0.9rem; }
+        .card-total { 
+            margin-top: 15px; 
+            padding-top: 15px; 
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+        }
+
+        .btn-detalle {
+            width: 100%;
+            margin-top: 15px;
+            padding: 10px;
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-detalle:hover { background: var(--primary); color: white; }
+
+        /* --- VISTA DETALLE --- */
+        .detalle-view { display: none; background: var(--card-bg); padding: 30px; border-radius: 15px; border: 1px solid var(--border); }
+        .btn-volver { background: none; border: none; color: var(--primary); cursor: pointer; margin-bottom: 20px; font-size: 1rem; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th { text-align: left; color: var(--text-secondary); padding: 12px; border-bottom: 2px solid var(--border); }
+        td { padding: 12px; border-bottom: 1px solid var(--border); }
+        .total-row { font-size: 1.2rem; font-weight: bold; color: var(--primary); }
+
+        #loading { text-align: center; padding: 50px; font-size: 1.2rem; }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <a href="index.html" style="font-weight: bold; color: var(--primary); margin: 0;">LUBRICADORA</a>
+        <div>
+            <a href="index.html">Inicio</a>
+            <a href="Catalogo.html">Catálogo</a>
+            <a href="Carrito.html">Carrito</a>
+            <a href="Cotizaciones.html" style="color: white;">Mis Cotizaciones</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div id="lista-seccion">
+            <h1>Mis Cotizaciones</h1>
+            <p class="subtitle">Revisa el estado de tus solicitudes de productos</p>
+            
+            <div id="loading">Cargando tus solicitudes...</div>
+            <div id="cotizaciones-grid" class="cotizaciones-grid"></div>
+        </div>
+
+        <div id="detalle-seccion" class="detalle-view">
+            <button class="btn-volver" onclick="cerrarDetalle()">← Volver al listado</button>
+            <div id="detalle-contenido">
+                </div>
+        </div>
+    </div>
+
+    <script>
+        // Simulación de carga desde API (localhost:5000/api/cotizaciones)
+        async function cargarCotizaciones() {
+            try {
+                const response = await fetch('/api/cotizaciones'); // Tu endpoint de Node
+                const data = await response.json();
+                renderLista(data.cotizaciones);
+            } catch (error) {
+                console.error("Error:", error);
+                document.getElementById('loading').innerText = "Inicia sesión para ver tus cotizaciones.";
+            }
+        }
+
+        function renderLista(lista) {
+            const grid = document.getElementById('cotizaciones-grid');
+            const loading = document.getElementById('loading');
+            loading.style.display = 'none';
+
+            if (lista.length === 0) {
+                grid.innerHTML = `<p>No tienes cotizaciones registradas.</p>`;
+                return;
+            }
+
+            grid.innerHTML = lista.map(c => `
+                <div class="cotizacion-card">
+                    <div class="card-header">
+                        <div>
+                            <div style="font-weight: bold;">Cotización #${c.id}</div>
+                            <div style="font-size: 0.8rem; color: #666;">${new Date(c.creado_en).toLocaleDateString()}</div>
+                        </div>
+                        <span class="badge badge-${c.estado}">${c.estado}</span>
+                    </div>
+                    <div class="info-item">👤 ${c.nombre_cliente}</div>
+                    <div class="info-item">📧 ${c.email_cliente}</div>
+                    <div class="card-total">
+                        <span>Total estimado:</span>
+                        <span>$${parseFloat(c.total).toFixed(2)}</span>
+                    </div>
+                    <button class="btn-detalle" onclick="verDetalle(${c.id})">Ver detalle completo</button>
+                </div>
+            `).join('');
+        }
+
+        async function verDetalle(id) {
+            try {
+                const res = await fetch(`/api/cotizaciones/${id}`);
+                const data = await res.json();
+                const c = data.cotizacion;
+
+                document.getElementById('lista-seccion').style.display = 'none';
+                const detalle = document.getElementById('detalle-seccion');
+                detalle.style.display = 'block';
+
+                document.getElementById('detalle-contenido').innerHTML = `
+                    <h2>Detalle de Cotización #${c.id}</h2>
+                    <p>Estado: <span class="badge badge-${c.estado}">${c.estado}</span></p>
+                    <hr border="0" style="border-top: 1px solid #333; margin: 20px 0;">
+                    
+                    <h3>Productos</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th>Cant.</th>
+                                <th>Precio Unit.</th>
+                                <th>Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${c.items.map(item => `
+                                <tr>
+                                    <td>${item.producto_nombre} (${item.producto_marca})</td>
+                                    <td>${item.cantidad}</td>
+                                    <td>$${parseFloat(item.precio_unitario).toFixed(2)}</td>
+                                    <td>$${parseFloat(item.subtotal).toFixed(2)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                        <tfoot>
+                            <tr class="total-row">
+                                <td colspan="3" style="text-align: right;">TOTAL:</td>
+                                <td>$${parseFloat(c.total).toFixed(2)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                `;
+            } catch (e) {
+                alert("Error al cargar el detalle");
+            }
+        }
+
+        function cerrarDetalle() {
+            document.getElementById('detalle-seccion').style.display = 'none';
+            document.getElementById('lista-seccion').style.display = 'block';
+        }
+
+        // Iniciar
+        cargarCotizaciones();
+    </script>
+</body>
+</html>

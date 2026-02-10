@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro - Lubricadora</title>
+    <style>
+        :root {
+            --primary: #646cff;
+            --primary-hover: #535bf2;
+            --bg: #242424;
+            --card-bg: #1a1a1a;
+            --text: rgba(255, 255, 255, 0.87);
+            --error: #ff4d4d;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 450px;
+            padding: 20px;
+        }
+
+        .auth-card {
+            background-color: var(--card-bg);
+            padding: 2.5rem;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 1px solid #333;
+        }
+
+        h2 {
+            text-align: center;
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+            font-size: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.2rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            background-color: #2a2a2a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: white;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary);
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-2px);
+        }
+
+        .btn-primary:disabled {
+            background-color: #444;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .auth-footer {
+            text-align: center;
+            margin-top: 1.5rem;
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        .auth-footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .error-msg {
+            color: var(--error);
+            font-size: 0.8rem;
+            margin-top: 10px;
+            text-align: center;
+            display: none;
+            padding: 10px;
+            border: 1px solid var(--error);
+            border-radius: 4px;
+            background: rgba(255, 77, 77, 0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="auth-container">
+        <div class="auth-card">
+            <h2>Crear Cuenta</h2>
+            <form id="registroForm">
+                <div class="form-group">
+                    <label>Nombre Completo *</label>
+                    <input type="text" id="nombre" class="form-control" required placeholder="Juan Pérez">
+                </div>
+
+                <div class="form-group">
+                    <label>Email *</label>
+                    <input type="email" id="email" class="form-control" required placeholder="correo@ejemplo.com">
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div class="form-group">
+                        <label>Teléfono</label>
+                        <input type="tel" id="telefono" class="form-control" placeholder="0999999999">
+                    </div>
+                    <div class="form-group">
+                        <label>Empresa</label>
+                        <input type="text" id="empresa" class="form-control" placeholder="Mi Empresa">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Contraseña *</label>
+                    <input type="password" id="password" class="form-control" required placeholder="Mín. 6 caracteres">
+                </div>
+
+                <div class="form-group">
+                    <label>Confirmar Contraseña *</label>
+                    <input type="password" id="confirmarPassword" class="form-control" required placeholder="Repite tu contraseña">
+                </div>
+
+                <div id="errorBox" class="error-msg"></div>
+
+                <button type="submit" id="btnRegistro" class="btn-primary">Registrarse</button>
+            </form>
+
+            <p class="auth-footer">
+                ¿Ya tienes cuenta? <a href="login.html">Inicia sesión aquí</a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('registroForm');
+        const btn = document.getElementById('btnRegistro');
+        const errorBox = document.getElementById('errorBox');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorBox.style.display = 'none';
+
+            // 1. Captura de datos de los inputs
+            const datos = {
+                nombre: document.getElementById('nombre').value,
+                email: document.getElementById('email').value,
+                telefono: document.getElementById('telefono').value,
+                empresa: document.getElementById('empresa').value,
+                password: document.getElementById('password').value
+            };
+            const confirmar = document.getElementById('confirmarPassword').value;
+
+            // 2. Validaciones básicas de seguridad en el cliente
+            if (datos.password !== confirmar) {
+                showError('Las contraseñas no coinciden');
+                return;
+            }
+
+            if (datos.password.length < 6) {
+                showError('La contraseña debe tener al menos 6 caracteres');
+                return;
+            }
+
+            // 3. Preparar estado de carga
+            btn.innerText = 'Procesando...';
+            btn.disabled = true;
+
+            try {
+                // 4. Petición POST al servidor (Ruta sincronizada con tu API)
+                const response = await fetch('/api/usuarios/registro', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(datos)
+                });
+
+                const resultado = await response.json();
+
+                if (response.ok) {
+                    alert('¡Registro exitoso! Ya puedes ingresar con tus credenciales.');
+                    window.location.href = 'login.html';
+                } else {
+                    // Muestra el error específico que devuelve tu Backend o Supabase
+                    showError(resultado.mensaje || resultado.error || 'Error al crear la cuenta');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showError('No hay conexión con el servidor. Verifica que esté iniciado.');
+            } finally {
+                btn.innerText = 'Registrarse';
+                btn.disabled = false;
+            }
+        });
+
+        // Función para mostrar mensajes de alerta en el cuadro rojo
+        function showError(msg) {
+            errorBox.innerText = msg;
+            errorBox.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

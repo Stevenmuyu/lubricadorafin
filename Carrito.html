@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Carrito de Cotización - Lubricadora</title>
+<style>
+:root {
+    --primary: #646cff;
+    --primary-hover: #535bf2;
+    --bg: #242424;
+    --card-bg: #1a1a1a;
+    --text: rgba(255, 255, 255, 0.87);
+    --border: #333;
+}
+body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background-color: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding-bottom: 50px;
+}
+nav {
+    background-color: var(--card-bg);
+    padding: 1rem;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    border-bottom: 1px solid var(--border);
+}
+nav a { color: #888; text-decoration: none; }
+nav a.active { color: white; }
+
+.container { max-width: 1100px; margin: 2rem auto; padding: 0 1rem; }
+h1 { color: var(--primary); text-align: center; }
+
+/* --- LAYOUT DEL CARRITO --- */
+.carrito-wrapper { display: grid; grid-template-columns: 1fr 350px; gap: 2rem; }
+.carrito-items { display: flex; flex-direction: column; gap: 1rem; }
+
+.item-card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: grid;
+    grid-template-columns: 80px 1fr 100px 120px 50px;
+    align-items: center;
+    gap: 15px;
+    border: 1px solid var(--border);
+}
+.item-img {
+    font-size: 2.5rem;
+    background: #111;
+    border-radius: 8px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.item-info h3 { margin: 0; font-size: 1.1rem; }
+.item-info p { margin: 5px 0; color: #888; font-size: 0.85rem; }
+
+.qty-input {
+    width: 60px; padding: 8px; background: #2a2a2a;
+    border: 1px solid var(--border); color: white; border-radius: 5px;
+}
+.btn-delete {
+    background: none; border: none; color: #ff4d4d; cursor: pointer; font-size: 1.2rem;
+}
+
+/* --- RESUMEN --- */
+.resumen-card {
+    background: var(--card-bg);
+    padding: 2rem;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    height: fit-content;
+    position: sticky;
+    top: 20px;
+}
+.total-row {
+    display: flex; justify-content: space-between;
+    font-size: 1.3rem; font-weight: bold; margin: 20px 0;
+    border-top: 1px solid var(--border); padding-top: 20px;
+}
+.btn-main {
+    width: 100%; padding: 15px; background: var(--primary);
+    color: white; border: none; border-radius: 8px;
+    font-weight: bold; cursor: pointer; font-size: 1rem;
+}
+
+/* --- FORMULARIO OCULTO --- */
+#form-cotizacion {
+    display: none;
+    background: var(--card-bg);
+    padding: 2.5rem;
+    border-radius: 16px;
+    max-width: 600px;
+    margin: 0 auto;
+}
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+.form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 15px; }
+.form-group input, .form-group textarea {
+    padding: 12px; background: #2a2a2a; border: 1px solid var(--border);
+    border-radius: 8px; color: white;
+}
+.hidden { display: none !important; }
+
+@media (max-width: 850px) {
+    .carrito-wrapper { grid-template-columns: 1fr; }
+    .item-card { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+    <a href="index.html">Inicio</a>
+    <a href="catalogo.html">Catálogo</a>
+    <a href="carrito.html" class="active">Carrito (🛒 <span id="cart-count">0</span>)</a>
+</nav>
+
+<div class="container">
+<div id="vista-carrito">
+    <h1>Tu Carrito de Cotización</h1>
+    <div class="carrito-wrapper" id="carrito-content">
+        <div class="carrito-items" id="items-list"></div>
+        
+        <div class="resumen-card">
+            <h3>Resumen</h3>
+            <p id="unidades-texto">0 unidades en total</p>
+            <div class="total-row">
+                <span>Total Estimado:</span>
+                <span id="total-precio">$0.00</span>
+            </div>
+            <button class="btn-main" onclick="mostrarFormulario()">Solicitar Cotización</button>
+            <a href="catalogo.html" style="display:block; text-align:center; margin-top:15px; color:#888; text-decoration:none;">Seguir Comprando</a>
+        </div>
+    </div>
+
+    <div id="carrito-vacio" class="hidden" style="text-align:center; padding: 5rem 0;">
+        <div style="font-size: 5rem;">🛒</div>
+        <h2>Tu carrito está vacío</h2>
+        <button class="btn-main" style="width:auto; padding: 15px 40px;" onclick="location.href='catalogo.html'">Ir al Catálogo</button>
+    </div>
+</div>
+
+<div id="form-cotizacion">
+    <button onclick="ocultarFormulario()" style="background:none; border:none; color:var(--primary); cursor:pointer; margin-bottom:20px;">← Volver al carrito</button>
+    <h2>Datos de Contacto</h2>
+    <form id="submit-cotizacion">
+        <div class="form-group">
+            <label>Nombre Completo *</label>
+            <input type="text" id="nombre" required placeholder="Ej: Juan Pérez">
+        </div>
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Email *</label>
+                <input type="email" id="email" required placeholder="tu@correo.com">
+            </div>
+            <div class="form-group">
+                <label>Teléfono</label>
+                <input type="tel" id="telefono" placeholder="0999888777">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Notas adicionales</label>
+            <textarea id="notas" rows="4" placeholder="Alguna instrucción especial..."></textarea>
+        </div>
+        <button type="submit" class="btn-main" id="btn-enviar">Enviar Cotización Final</button>
+    </form>
+</div>
+</div>
+
+<script>
+// --- ICONOS POR TIPO ---
+const tipoEmoji = { aceite: '🛢️', filtro: '🔧', aditivo: '⚗️' };
+
+// --- CARRITO ---
+let carrito = JSON.parse(localStorage.getItem('carrito')) || [];
+
+function renderCarrito() {
+    const list = document.getElementById('items-list');
+    const cartContent = document.getElementById('carrito-content');
+    const cartVacio = document.getElementById('carrito-vacio');
+    const cartCount = document.getElementById('cart-count');
+    
+    cartCount.innerText = carrito.length;
+
+    if (carrito.length === 0) {
+        cartContent.classList.add('hidden');
+        cartVacio.classList.remove('hidden');
+        return;
+    }
+
+    cartContent.classList.remove('hidden');
+    cartVacio.classList.add('hidden');
+
+    let total = 0;
+    let unidades = 0;
+
+    list.innerHTML = carrito.map((item, index) => {
+        const subtotal = item.precio * item.cantidad;
+        total += subtotal;
+        unidades += parseInt(item.cantidad);
+        const emoji = tipoEmoji[item.tipo] || '📦';
+        const marca = item.marca || '';
+        return `
+        <div class="item-card">
+            <div class="item-img">${emoji}</div>
+            <div class="item-info">
+                <h3>${item.nombre}</h3>
+                <p>${marca}</p>
+            </div>
+            <div>$${parseFloat(item.precio).toFixed(2)}</div>
+            <div>
+                <input type="number" class="qty-input" value="${item.cantidad}" 
+                onchange="cambiarCantidad(${index}, this.value)" min="1">
+            </div>
+            <button class="btn-delete" onclick="eliminar(${index})">🗑️</button>
+        </div>
+        `;
+    }).join('');
+
+    document.getElementById('total-precio').innerText = `$${total.toFixed(2)}`;
+    document.getElementById('unidades-texto').innerText = `${unidades} unidades en total`;
+}
+
+function cambiarCantidad(index, valor) {
+    if (valor < 1) return;
+    carrito[index].cantidad = parseInt(valor);
+    localStorage.setItem('carrito', JSON.stringify(carrito));
+    renderCarrito();
+}
+
+function eliminar(index) {
+    carrito.splice(index, 1);
+    localStorage.setItem('carrito', JSON.stringify(carrito));
+    renderCarrito();
+}
+
+// --- FORMULARIO ---
+function mostrarFormulario() {
+    document.getElementById('vista-carrito').classList.add('hidden');
+    document.getElementById('form-cotizacion').style.display = 'block';
+}
+
+function ocultarFormulario() {
+    document.getElementById('vista-carrito').classList.remove('hidden');
+    document.getElementById('form-cotizacion').style.display = 'none';
+}
+
+// --- ENVÍO API ---
+document.getElementById('submit-cotizacion').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btn-enviar');
+    btn.innerText = "Enviando...";
+    btn.disabled = true;
+
+    const datos = {
+        nombre_cliente: document.getElementById('nombre').value,
+        email_cliente: document.getElementById('email').value,
+        telefono_cliente: document.getElementById('telefono').value,
+        notas: document.getElementById('notas').value,
+        items: carrito
+    };
+
+    try {
+        const res = await fetch('/api/cotizaciones', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(datos)
+        });
+
+        if (res.ok) {
+            alert('✅ Cotización enviada correctamente. Pronto nos contactaremos.');
+            localStorage.removeItem('carrito');
+            window.location.href = 'index.html';
+        } else {
+            alert('❌ Error al enviar. Intenta de nuevo.');
+        }
+    } catch (error) {
+        alert('❌ Error de conexión');
+    } finally {
+        btn.innerText = "Enviar Cotización Final";
+        btn.disabled = false;
+    }
+});
+
+renderCarrito();
+</script>
+</body>
+</html>
