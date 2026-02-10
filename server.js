@@ -1,39 +1,68 @@
-// RUTA DE LOGIN (Para que tu login.html funcione)
+require('dotenv').config();
+const express = require('express');
+const { createClient } = require('@supabase/supabase-js');
+const path = require('path');
+const cors = require('cors');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middlewares
+app.use(cors());
+app.use(express.json());
+app.use(express.static(__dirname)); // Sirve archivos desde la raíz
+
+// Conexión a Supabase
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+// --- RUTAS DE API ---
+
+// 1. Obtener productos (Formato compatible con tu Catálogo)
+app.get('/api/productos', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('productos')
+            .select('*');
+
+        if (error) throw error;
+        res.json(data); // Envía el array directo
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 2. Login de usuarios
 app.post('/api/usuarios/login', async (req, res) => {
     const { email, password } = req.body;
-
     try {
-        // 1. Buscamos al usuario en la tabla 'usuarios' de Supabase
         const { data: usuario, error } = await supabase
             .from('usuarios')
             .select('*')
             .eq('email', email)
-            .eq('password', password) // Nota: En producción usar bcrypt
+            .eq('password', password)
             .single();
 
         if (error || !usuario) {
-            return res.status(401).json({ mensaje: "Usuario o contraseña incorrectos" });
+            return res.status(401).json({ mensaje: "Credenciales incorrectas" });
         }
 
-        // 2. Si todo está bien, devolvemos los datos del usuario
-        // El frontend recibirá esto y lo guardará en localStorage
         res.json({
-            mensaje: "Login exitoso",
-            usuario: {
-                id: usuario.id,
-                nombre: usuario.nombre,
-                email: usuario.email,
-                rol: usuario.rol // Asegúrate de que en Supabase la columna se llame 'rol'
-            }
+            mensaje: "Acceso correcto",
+            usuario: usuario,
+            token: "session_token_mock" // Token simple para no complicar el deploy
         });
-
     } catch (err) {
-        console.error("Error en login:", err.message);
-        res.status(500).json({ mensaje: "Error interno del servidor" });
+        res.status(500).json({ mensaje: "Error en el servidor" });
     }
 });
 
-// Asegúrate de que el servidor sepa dónde está el archivo físico
-app.get('/login.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'login.html'));
+// --- RUTAS PARA LAS PÁGINAS (Evita el Not Found) ---
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+app.get('/Catalogo.html', (req, res) => res.sendFile(path.join(__dirname, 'Catalogo.html')));
+app.get('/login.html', (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
+
+app.listen(PORT, () => {
+    console.log(`🚀 Servidor funcionando en puerto ${PORT}`);
 });
