@@ -9,13 +9,26 @@ app.use(express.json());
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret_key_lubricadora_2026';
 
-// 1. CONFIGURACIÓN DE CONEXIÓN
+// ==========================================
+// 1. CONFIGURACIÓN DE CONEXIÓN (CORREGIDO)
+// ==========================================
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL || `postgresql://postgres:fVVPC0QNTd3agHiZ@db.wsjtbqsteemsktfmgexj.supabase.co:5432/postgres`,
-    ssl: { rejectUnauthorized: false }
+    // Priorizamos la variable de entorno de Render
+    connectionString: process.env.DATABASE_URL, 
+    ssl: { 
+        rejectUnauthorized: false // Obligatorio para Supabase en Render
+    }
 });
 
-// 3. MODELOS
+// Verificación de conexión inicial
+pool.query('SELECT NOW()', (err, res) => {
+    if (err) console.error('❌ Error de conexión a la DB:', err.message);
+    else console.log('✅ Conexión a Supabase establecida correctamente');
+});
+
+// ==========================================
+// 2. LÓGICA DE MODELOS
+// ==========================================
 const Modelos = {
     Usuario: {
         async crear(datos) {
@@ -34,7 +47,6 @@ const Modelos = {
     },
     Producto: {
         async listar(filtros = {}) {
-            // WHERE 1=1 permite que los filtros se añadan dinámicamente sin romper la sintaxis
             let query = 'SELECT * FROM productos WHERE 1=1'; 
             const valores = [];
             let contador = 1;
@@ -57,24 +69,21 @@ const Modelos = {
     }
 };
 
-// 4. RUTAS DE LA API
+// ==========================================
+// 3. RUTAS DE LA API (DEBEN IR ANTES QUE EL STATIC '*')
+// ==========================================
+
 app.get('/api/productos', async (req, res) => {
     try {
         const productos = await Modelos.Producto.listar(req.query);
-        
-        // Verificación en consola de Render para que sepas si la DB devolvió algo
-        console.log(`📦 DB devolvió ${productos.length} productos`);
-        
-        // IMPORTANTE: Enviamos el array directamente
-        // Si tu frontend falla, intenta cambiar esto a: res.json({ productos });
+        console.log(`📦 DB enviando ${productos.length} productos`);
         res.json(productos); 
     } catch (e) { 
-        console.error("❌ Error en GET /api/productos:", e.message);
+        console.error("❌ Error API:", e.message);
         res.status(500).json({ error: e.message }); 
     }
 });
 
-// LOGIN Y REGISTRO (Igual que los tenías)
 app.post('/api/usuarios/registro', async (req, res) => {
     try {
         const { nombre, email, password } = req.body;
@@ -101,10 +110,20 @@ app.post('/api/usuarios/login', async (req, res) => {
     } catch (e) { res.status(500).json({ mensaje: e.message }); }
 });
 
-// 5. ARCHIVOS ESTÁTICOS
-app.use(express.static(path.join(__dirname)));
+// ==========================================
+// 4. ARCHIVOS ESTÁTICOS Y MANEJO DE RUTAS
+// ==========================================
 
+// Servir archivos de la carpeta raíz
+app.use(express.static(__dirname));
+
+// Esta ruta debe ser la ÚLTIMA siempre
 app.get('*', (req, res) => {
+    // Si la ruta comienza con /api y llegó aquí, es que la ruta de la API no existe
+    if (req.path.startsWith('/api')) {
+        return res.status(404).json({ error: 'Ruta de API no encontrada' });
+    }
+    // Para cualquier otra ruta (como /Catalogo.html), enviamos el archivo
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
