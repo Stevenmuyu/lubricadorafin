@@ -145,10 +145,8 @@ app.post('/api/usuarios/login', async (req, res) => {
         if (usuario && usuario.password === password) {
             const { password: _, ...datos } = usuario;
             const token = jwt.sign(datos, JWT_SECRET, { expiresIn: '24h' });
-            console.log(`✅ Acceso concedido: ${email}`);
             return res.json({ usuario: datos, token });
         } else {
-            console.log(`❌ Acceso denegado: ${email}`);
             return res.status(401).json({ mensaje: 'Credenciales inválidas' });
         }
     } catch (e) { res.status(500).json({ mensaje: e.message }); }
@@ -214,21 +212,17 @@ app.get('/api/admin/estadisticas', verificarToken, esAdmin, async (req, res) => 
 });
 
 // ==========================================
-// 5. ARCHIVOS ESTÁTICOS Y REDIRECCIÓN (Corregido para Render)
+// 5. ARCHIVOS ESTÁTICOS Y REDIRECCIÓN (Ajustado)
 // ==========================================
-// Servimos archivos desde la raíz
 app.use(express.static(path.join(__dirname)));
 
-// El '*' maneja las rutas de frontend sin romper la API
 app.get('*', (req, res) => {
-    if (req.url.startsWith('/api')) {
-        return res.status(404).json({ error: 'API no encontrada' });
-    }
+    if (req.url.startsWith('/api')) return res.status(404).json({ error: 'API no encontrada' });
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// IMPORTANTE: Escuchar en 0.0.0.0 para entornos cloud
+// ESCUCHAR EN 0.0.0.0 ES OBLIGATORIO PARA RENDER
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Servidor activo y escuchando en el puerto ${PORT}`);
+    console.log(`🚀 Servidor en línea en el puerto ${PORT}`);
 });
