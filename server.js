@@ -12,7 +12,6 @@ const JWT_SECRET = process.env.JWT_SECRET || 'secret_key_lubricadora_2026';
 // ==========================================
 // 1. CONFIGURACIÓN DE CONEXIÓN
 // ==========================================
-// Mantenemos tu string de Supabase pero priorizamos la variable de entorno
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL || `postgresql://postgres:fVVPC0QNTd3agHiZ@db.wsjtbqsteemsktfmgexj.supabase.co:5432/postgres`,
     ssl: { rejectUnauthorized: false }
@@ -52,7 +51,7 @@ const esAdmin = (req, res, next) => {
 };
 
 // ==========================================
-// 3. LÓGICA DE MODELOS
+// 3. LÓGICA DE MODELOS (Sin Bcrypt)
 // ==========================================
 const Modelos = {
     Usuario: {
@@ -72,6 +71,7 @@ const Modelos = {
     },
     Producto: {
         async listar(filtros = {}) {
+            // Se mantiene el filtro activo = true por defecto
             let query = 'SELECT * FROM productos WHERE activo = true';
             const valores = [];
             let contador = 1;
@@ -79,7 +79,9 @@ const Modelos = {
             if (filtros.marca) { query += ` AND marca ILIKE $${contador}`; valores.push(`%${filtros.marca}%`); contador++; }
             if (filtros.viscosidad) { query += ` AND viscosidad = $${contador}`; valores.push(filtros.viscosidad); contador++; }
             if (filtros.busqueda) { query += ` AND (nombre ILIKE $${contador} OR descripcion ILIKE $${contador})`; valores.push(`%${filtros.busqueda}%`); contador++; }
-            query += ' ORDER BY creado_en DESC';
+            
+            // Ordenamos por creado_en o id como respaldo
+            query += ' ORDER BY id DESC'; 
             const res = await pool.query(query, valores);
             return res.rows;
         },
@@ -131,13 +133,17 @@ app.post('/api/usuarios/registro', async (req, res) => {
     try {
         const { nombre, email, password } = req.body;
         if (!nombre || !email || !password) return res.status(400).json({ mensaje: 'Datos incompletos' });
+        
         const existente = await Modelos.Usuario.obtenerPorEmail(email);
         if (existente) return res.status(409).json({ mensaje: 'El correo ya existe' });
+        
         const nuevo = await Modelos.Usuario.crear(req.body);
         const { password: _, ...usuarioSinPassword } = nuevo;
         const token = jwt.sign(usuarioSinPassword, JWT_SECRET, { expiresIn: '24h' });
         res.status(201).json({ usuario: usuarioSinPassword, token });
-    } catch (e) { res.status(500).json({ mensaje: e.message }); }
+    } catch (e) { 
+        res.status(500).json({ mensaje: e.message }); 
+    }
 });
 
 // LOGIN
@@ -145,21 +151,26 @@ app.post('/api/usuarios/login', async (req, res) => {
     try {
         const { email, password } = req.body;
         const usuario = await Modelos.Usuario.obtenerPorEmail(email);
+        
         if (usuario && usuario.password === password) {
             const { password: _, ...datos } = usuario;
             const token = jwt.sign(datos, JWT_SECRET, { expiresIn: '24h' });
+            console.log(`✅ Acceso concedido: ${email}`);
             return res.json({ usuario: datos, token });
         } else {
+            console.log(`❌ Acceso denegado: ${email}`);
             return res.status(401).json({ mensaje: 'Credenciales inválidas' });
         }
-    } catch (e) { res.status(500).json({ mensaje: e.message }); }
+    } catch (e) { 
+        res.status(500).json({ mensaje: e.message }); 
+    }
 });
 
-// PRODUCTOS - CORREGIDO PARA EL FRONTEND
+// PRODUCTOS - CORRECCIÓN CRUCIAL: Se envía el array directo
 app.get('/api/productos', async (req, res) => {
     try {
         const productos = await Modelos.Producto.listar(req.query);
-        // Enviamos el array directo para que Catalogo.html funcione con data.map()
+        // Enviamos 'productos' directamente (el array res.rows)
         res.json(productos); 
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -181,22 +192,29 @@ app.patch('/api/cotizaciones/:id/estado', verificarToken, esAdmin, async (req, r
         const { estado, comentario } = req.body;
         const { id } = req.params;
         await client.query('BEGIN');
+        
         const cotRes = await client.query('SELECT * FROM cotizaciones WHERE id = $1', [id]);
         if (!cotRes.rows[0]) return res.status(404).json({ mensaje: 'No encontrada' });
+
         if (estado === 'pagado' && cotRes.rows[0].estado !== 'pagado') {
             const items = await client.query('SELECT * FROM cotizacion_items WHERE cotizacion_id = $1', [id]);
             for (const item of items.rows) {
                 await Modelos.Producto.descontarStock(client, item.producto_id, item.cantidad);
             }
         }
+        
         await client.query('UPDATE cotizaciones SET estado = $1 WHERE id = $2', [estado, id]);
         await client.query(
             'INSERT INTO historial_cotizaciones (cotizacion_id, estado_nuevo, usuario_modificador_id, comentario) VALUES ($1, $2, $3, $4)',
             [id, estado, req.usuario.id, comentario]
         );
+        
         await client.query('COMMIT');
         res.json({ mensaje: 'Estado actualizado' });
-    } catch (e) { await client.query('ROLLBACK'); res.status(500).json({ mensaje: e.message }); } finally { client.release(); }
+    } catch (e) { 
+        await client.query('ROLLBACK'); 
+        res.status(500).json({ mensaje: e.message }); 
+    } finally { client.release(); }
 });
 
 // ESTADÍSTICAS (ADMIN)
@@ -227,5 +245,6 @@ app.use((req, res) => {
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-    console.log(`🚀 Servidor activo en puerto ${PORT}`);
+    console.log(`🚀 Servidor activo en http://localhost:${PORT}`);
 });
+
